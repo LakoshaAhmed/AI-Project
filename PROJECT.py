@@ -1,63 +1,52 @@
-import nest_asyncio
-import logging
-import asyncio
-from telethon import TelegramClient, events
-from openai import OpenAI
-import os 
+import requests
+from telegram import Update
+from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, ContextTypes, filters
 
+# ⛔ Insert your keys directly here
+TELEGRAM_TOKEN = "8527912876:AAGrldzpVxcroBuRNcnKYpbMc0vksZ3IaI8"
+OPENAI_API_KEY = "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"
 
-API_ID = 1234567 # (Integer)
-API_HASH = '257cc05bcc9c656e2ac21e6cf7175f2d' #  (String)
-BOT_TOKEN = '8527912876:AAGrldzpVxcroBuRNcnKYpbMc0vksZ3IaI8' 
-OPENAI_API_KEY = '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' # Your OpenAI API Key (String)
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Hello! I'm your AI bot powered by ChatGPT. Send me any question!")
 
-logging.basicConfig(level=logging.INFO)
+def ask_chatgpt(prompt: str) -> str:
+    url = "https://api.openai.com/v1/chat/completions"
 
-client = TelegramClient('bot', API_ID, API_HASH)
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json"
+    }
 
+    data = {
+        "model": "gpt-4.1",
+        "messages": [
+            {"role": "user", "content": prompt}
+        ]
+    }
 
-ai = OpenAI(api_key=OPENAI_API_KEY)
+    res = requests.post(url, json=data, headers=headers)
+    res.raise_for_status()
 
+    return res.json()["choices"][0]["message"]["content"]
 
-async def main():
-    await client.start(bot_token=BOT_TOKEN)
+async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_text = update.message.text
 
-    @client.on(events.NewMessage(pattern='/start'))
-    async def start_handler(event):
-        await event.respond("Hello! I am Hackers Realm AI Bot. How can I assist you today?")
-        logging.info(f'/start from {event.sender_id}')
+    try:
+        ai_reply = ask_chatgpt(user_text)
+        await update.message.reply_text(ai_reply)
+    except Exception as e:
+        await update.message.reply_text("Error: Something went wrong with ChatGPT.")
+        print("Error:", e)
 
-    @client.on(events.NewMessage(pattern='/info'))
-    async def info_handler(event):
-        await event.respond("This AI Chatbot is created in Python with OpenAI API.")
-        logging.info(f'/info from {event.sender_id}')
+def main():
+    app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
-    @client.on(events.NewMessage(pattern='/help'))
-    async def help_handler(event):
-        await event.respond(
-            "Commands:\n"
-            "/start - Start the bot\n"
-            "/help - Help info\n"
-            "/info - Bot info\n"
-        )
-        logging.info(f'/help from {event.sender_id}')
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
 
-    @client.on(events.NewMessage)
-    async def ai_chat(event):
-        text = event.text.strip()
-        if text.startswith('/'):
-            return
+    print("Bot is running...")
+    app.run_polling()
 
-        response = ai.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": text}],
-            max_tokens=128
-        )
-
-        answer = response.choices[0].message.content
-        await event.respond(answer)
-        logging.info(f"AI reply sent to {event.sender_id}")
-
-    await client.run_until_disconnected()
-
-asyncio.run(main())
+if __name__ == "__main__":
+    main()
