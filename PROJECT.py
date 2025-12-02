@@ -2,7 +2,6 @@ import requests
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, ContextTypes, filters
 
-# ⛔ Insert your keys directly here
 TELEGRAM_TOKEN = "8527912876:AAGrldzpVxcroBuRNcnKYpbMc0vksZ3IaI8"
 OPENAI_API_KEY = "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"
 
@@ -50,3 +49,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
